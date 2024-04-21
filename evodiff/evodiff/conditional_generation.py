@@ -32,18 +32,8 @@ def main():
 
     
     # added arguments
-    parser.add_argument('--scaffold_chain1', type=str, default='',
-                        help='Scaffold chain1 in TCR')
-    parser.add_argument('--scaffold_chain2', type=str, default='',
-                        help='Scaffold chain2 in TCR')
-    parser.add_argument('--scaffold_chain3', type=str, default='',
-                        help='Scaffold chain3 in TCR')
-    parser.add_argument('--scaffold_chain4', type=str, default='',
-                        help='Scaffold chain4 in TCR')
-    parser.add_argument('--cdr1_len', type=int, default=8,
-                        help='Length of desired CDR1 generation')
-    parser.add_argument('--cdr2_len', type=int, default=8,
-                        help='Length of desired CDR2 generation')
+    parser.add_argument('--scaffold_chain_left', type=str, default='')
+    parser.add_argument('--scaffold_chain_right', type=str, default='')
     parser.add_argument('--cdr3_len', type=int, default=8,
                         help='Length of desired CDR3 generation')
 
@@ -389,24 +379,16 @@ def get_intervals(list, single_res_domain=False):
                 start.append(list[i+1].item())
     return start, stop
 
-def generate_tcr_motif(model, scaffold_chain1, scaffold_chain2, scaffold_chain3, scaffold_chain4,
-                        cdr1_len, cdr2_len, cdr3_len, tokenizer,
+def generate_tcr_motif(model, scaffold_chain_left, scaffold_chain_right, cdr3_len, tokenizer,
                       batch_size=1, device='gpu', random_baseline=False, single_res_domain=False, chain='A'):
 
     mask = tokenizer.mask_id
-    scaffold_chains = [scaffold_chain1, scaffold_chain2, scaffold_chain3, scaffold_chain4]
+    tokenized_left_scaffold.append(tokenizer.tokenize((scaffold_chain_left,)))
+    tokenized_right_scaffold.append(tokenizer.tokenize((scaffold_chain_right,)))
 
-    tokenized_scaffolds = []
-    for chain in scaffold_chains:
-        tokenized_scaffolds.append(tokenizer.tokenize((chain,)))
-
-    sample = torch.cat([torch.tensor(tokenized_scaffolds[0]).unsqueeze(0),
-                        torch.zeros((batch_size, cdr1_len)) + mask,
-                        torch.tensor(tokenized_scaffolds[1]).unsqueeze(0),
-                        torch.zeros((batch_size, cdr2_len)) + mask,
-                        torch.tensor(tokenized_scaffolds[2]).unsqueeze(0),
+    sample = torch.cat([torch.tensor(tokenized_left_scaffold).unsqueeze(0),
                         torch.zeros((batch_size, cdr3_len)) + mask,
-                        torch.tensor(tokenized_scaffolds[3]).unsqueeze(0)], dim=1)
+                        torch.tensor(tokenized_right_scaffold).unsqueeze(0)], dim=1)
 
     nonmask_locations = (sample[0] != mask).nonzero().flatten()
     new_start_idxs, new_end_idxs = get_intervals(nonmask_locations, single_res_domain=single_res_domain)
