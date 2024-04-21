@@ -40,8 +40,10 @@ def process_csv(csv_file):
     return all_scaffolds, all_cdr_placeholders
 
 if __name__ == "__main__":
+    csv_file_name = "TRAV_human_imgt.csv"
+    num_repeats = 1
 
-    all_scaffolds, all_cdr_placeholders = process_csv("TRAV_human_imgt.csv")
+    all_scaffolds, all_cdr_placeholders = process_csv(csv_file_name)
 
     model_type = "oa_dm_38M"
     cdr1_len = 8
@@ -49,23 +51,20 @@ if __name__ == "__main__":
 
     for i in range(len(all_scaffolds)):
         scaffold_chains = all_scaffolds[i]
-        print(scaffold_chains)
-
         for cdr3_len in range(8,16):
-
-            command = [
-                "python",
-                "evodiff/evodiff/conditional_generation.py",
-                f"--model-type={model_type}",
-                "--gpus=1",
-                "--cond-task=tcr",
-                f"--scaffold_chain1={scaffold_chains[0]}",
-                f"--scaffold_chain2={scaffold_chains[1]}",
-                f"--scaffold_chain3={scaffold_chains[2]}",
-                f"--scaffold_chain4={scaffold_chains[3]}",
-                f"--cdr1_len={cdr1_len}",
-                f"--cdr2_len={cdr2_len}",
-                f"--cdr3_len={cdr3_len}"
-            ]
-
-            subprocess.run(command)
+            for j in range(num_repeats):
+                command = [
+                    "python",
+                    "evodiff/evodiff/conditional_generation.py",
+                    f"--model-type={model_type}",
+                    "--gpus=6",
+                    "--cond-task=tcr",
+                    f"--scaffold_chain1={scaffold_chains[0]}",
+                    f"--scaffold_chain2={scaffold_chains[1]}",
+                    f"--scaffold_chain3={scaffold_chains[2]}",
+                    f"--scaffold_chain4={scaffold_chains[3]}",
+                    f"--cdr1_len={cdr1_len}",
+                    f"--cdr2_len={cdr2_len}",
+                    f"--cdr3_len={cdr3_len}"
+                ]
+                subprocess.run(command)

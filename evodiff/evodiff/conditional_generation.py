@@ -1,3 +1,4 @@
+import csv
 import evodiff
 from evodiff.pretrained import OA_DM_640M, OA_DM_38M, CARP_640M, LR_AR_38M, LR_AR_640M
 import numpy as np
@@ -9,6 +10,7 @@ import esm.inverse_folding
 from evodiff.utils import Tokenizer, run_omegafold, clean_pdb, run_tmscore #, wrap_dr_bert, read_dr_bert_output
 import pathlib
 from sequence_models.utils import parse_fasta
+import sys
 from tqdm import tqdm
 import pandas as pd
 import random
@@ -80,7 +82,6 @@ def main():
     if args.random_baseline:
         args.model_type = 'oa_dm_640M' # placeholder
 
-    print("USING MODEL", args.model_type)
     if args.model_type == 'oa_dm_38M':
         checkpoint = OA_DM_38M()
     elif args.model_type == 'oa_dm_640M':
@@ -94,11 +95,11 @@ def main():
     else:
         raise Exception("Please select either oa_dm_38M, oa_dm_640M, carp_640M, lr_ar_38M, or lr_ar_640M. You selected: ", args.model_type, ". If you want to generate a random baseline, add the --random-baseline flag to any model.")
 
-    model, collater, tokenizer, scheme = checkpoint
-    model.eval().cuda()
-
     torch.cuda.set_device(args.gpus)
     device = torch.device('cuda:' + str(args.gpus))
+
+    model, collater, tokenizer, scheme = checkpoint
+    model.eval().cuda()
 
     if args.amlt:
         home = os.getenv('AMLT_OUTPUT_DIR', '/tmp') + '/'
@@ -217,15 +218,17 @@ def main():
                                             tokenizer, device=device,
                                             single_res_domain=args.single_res_domain,
                                             chain=args.chain)
+        
+        with open("results_TRAV_human_imgt.csv", mode='a', newline='') as file:
+            writer = csv.writer(file,lineterminator='\n')
+            writer.writerow([generated_seq[0], args.cdr1_len, args.cdr2_len, args.cdr3_len])
 
-        print(generated_seq)
-
-    with open(out_fpath + 'generated_samples_string.csv', 'w') as f:
-        for _s in strings:
-            f.write(_s[0]+"\n")
-    with open(out_fpath + 'generated_samples_string.fasta', 'w') as f:
-        for i, _s in enumerate(strings):
-            f.write(">SEQUENCE_" + str(i) + "\n" + str(_s[0]) + "\n")
+    # with open(out_fpath + 'generated_samples_string.csv', 'w') as f:
+    #     for _s in strings:
+    #         f.write(_s[0]+"\n")
+    # with open(out_fpath + 'generated_samples_string.fasta', 'w') as f:
+    #     for i, _s in enumerate(strings):
+    #         f.write(">SEQUENCE_" + str(i) + "\n" + str(_s[0]) + "\n")
 
     # Disopred eval
     if args.cond_task == 'idr':
@@ -386,25 +389,24 @@ def get_intervals(list, single_res_domain=False):
                 start.append(list[i+1].item())
     return start, stop
 
-def generate_tcr_motif(model, scaffold_chains, cdr1_len, cdr2_len, cdr3_len, tokenizer,
+def generate_tcr_motif(model, scaffold_chain1, scaffold_chain2, scaffold_chain3, scaffold_chain4,
+                        cdr1_len, cdr2_len, cdr3_len, tokenizer,
                       batch_size=1, device='gpu', random_baseline=False, single_res_domain=False, chain='A'):
 
-    assert len(scaffold_chains) == 4
     mask = tokenizer.mask_id
+    scaffold_chains = [scaffold_chain1, scaffold_chain2, scaffold_chain3, scaffold_chain4]
 
     tokenized_scaffolds = []
     for chain in scaffold_chains:
         tokenized_scaffolds.append(tokenizer.tokenize((chain,)))
 
-    seq_len = sum([len(chain) for chain in scaffold_chains]) + cdr1_len + cdr2_len + cdr3_len
-    sample = torch.zeros((batch_size, seq_len)) + mask # start from all mask
-    sample = torch.cat([torch.tensor(tokenized_scaffolds[0]),
-                        torch.zeros((batch_size, len(scaffold_chains[0]))),
-                        torch.tensor(tokenized_scaffolds[1]),
-                        torch.zeros((batch_size, len(scaffold_chains[1]))),
-                        torch.tensor(tokenized_scaffolds[2]),
-                        torch.zeros((batch_size, len(scaffold_chains[2]))),
-                        torch.tensor(tokenized_scaffolds[3])])
+    sample = torch.cat([torch.tensor(tokenized_scaffolds[0]).unsqueeze(0),
+                        torch.zeros((batch_size, cdr1_len)) + mask,
+                        torch.tensor(tokenized_scaffolds[1]).unsqueeze(0),
+                        torch.zeros((batch_size, cdr2_len)) + mask,
+                        torch.tensor(tokenized_scaffolds[2]).unsqueeze(0),
+                        torch.zeros((batch_size, cdr3_len)) + mask,
+                        torch.tensor(tokenized_scaffolds[3]).unsqueeze(0)], dim=1)
 
     nonmask_locations = (sample[0] != mask).nonzero().flatten()
     new_start_idxs, new_end_idxs = get_intervals(nonmask_locations, single_res_domain=single_res_domain)
@@ -426,9 +428,7 @@ def generate_tcr_motif(model, scaffold_chains, cdr1_len, cdr2_len, cdr3_len, tok
                 p_sample = torch.multinomial(p, num_samples=1)
             sample[:, i] = p_sample.squeeze()
 
-    print("Generated sequence:", [tokenizer.untokenize(s) for s in sample])
     untokenized = [tokenizer.untokenize(s) for s in sample]
-
     return untokenized
 
 def generate_scaffold(model, PDB_ID, motif_start_idxs, motif_end_idxs, scaffold_length, data_top_dir, tokenizer,
