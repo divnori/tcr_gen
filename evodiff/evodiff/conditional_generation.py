@@ -367,18 +367,25 @@ def get_intervals(list, single_res_domain=False):
                 start.append(list[i+1].item())
     return start, stop
 
-def generate_tcr_motif(model, alpha_chain, beta_chain, cdr3_len, tokenizer,
+def generate_tcr_motif(model, scaffold_chains, cdr1_len, cdr2_len, cdr3_len, tokenizer,
                       batch_size=1, device='gpu', random_baseline=False, single_res_domain=False, chain='A'):
+
+    assert len(scaffold_chains) == 4
     mask = tokenizer.mask_id
 
-    scaffold_alpha_tokenized = tokenizer.tokenize((alpha_chain,))
-    scaffold_beta_tokenized = tokenizer.tokenize((beta_chain,))
+    tokenized_scaffolds = []
+    for chain in scaffold_chains:
+        tokenized_scaffolds.append(tokenizer.tokenize((chain,)))
 
-    # Create input motif + scaffold
-    seq_len = len(alpha_chain) + len(cdr3) + len(beta_chain)
+    seq_len = sum([len(chain) for chain in scaffold_chains]) + cdr1_len + cdr2_len + cdr3_len
     sample = torch.zeros((batch_size, seq_len)) + mask # start from all mask
-    sample[:, len(alpha_chain)] = torch.tensor(scaffold_alpha_tokenized)
-    sample[:, (len(alpha_chain) + cdr3_len):] = torch.tensor(scaffold_beta_tokenized)
+    sample = torch.cat([torch.tensor(tokenized_scaffolds[0]),
+                        torch.zeros((batch_size, len(scaffold_chains[0]))),
+                        torch.tensor(tokenized_scaffolds[1]),
+                        torch.zeros((batch_size, len(scaffold_chains[1]))),
+                        torch.tensor(tokenized_scaffolds[2]),
+                        torch.zeros((batch_size, len(scaffold_chains[2]))),
+                        torch.tensor(tokenized_scaffolds[3])])
 
     nonmask_locations = (sample[0] != mask).nonzero().flatten()
     new_start_idxs, new_end_idxs = get_intervals(nonmask_locations, single_res_domain=single_res_domain)
