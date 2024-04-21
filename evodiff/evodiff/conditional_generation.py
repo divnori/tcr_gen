@@ -26,7 +26,7 @@ def main():
                               oa_dm_38M oa_dm_640M lr_ar_38M lr_ar_640M')
     parser.add_argument('--gpus', type=int, default=0)
     parser.add_argument('--cond-task', type=str, default='scaffold',
-                        help="Choice of 'scaffold' or 'idr'")
+                        help="Choice of 'scaffold' or 'idr' or 'tcr'")
     parser.add_argument('--pdb', type=str, default=None,
                         help="If using cond-task=scaffold, provide a PDB code and motif indexes")
     parser.add_argument('--start-idxs', type=int, action='append',
@@ -110,6 +110,7 @@ def main():
     if args.cond_task == 'idr':
         tokenized_sequences, start_idxs, end_idxs, queries, sequences, b_tokenized, b_starts, b_ends, query_ids =\
             get_IDR_sequences(data_top_dir, tokenizer, num_seqs=args.num_seqs, max_seq_len=args.max_seq_length)
+        
         if args.scrambled_baseline:
             r_strings, r_og_strings, r_new_idrs, r_og_idrs, r_start_idxs, r_end_idxs = scramble_input(sequences, start_idxs, end_idxs)
             r_b_strings, r_b_og_strings, r_b_new_idrs, r_b_og_idrs, r_b_start_idxs, r_b_end_idxs = scramble_input(sequences, b_starts, b_ends)
@@ -190,6 +191,12 @@ def main():
             end_idxs.append(new_end_idx)
             scaffold_lengths.append(scaffold_length)
 
+    elif args.cond_task == 'tcr':
+        for k in range(7,16): # typical length range of TCR CDR3
+            generated_seq = generate_tcr_motif(model, alpha_chain, beta_chain, 
+                                k, tokenizer, device=device,
+                                single_res_domain=args.single_res_domain,
+                                chain=args.chain)
 
         save_df = pd.DataFrame(list(zip(strings, start_idxs, end_idxs, scaffold_lengths)), columns=['seqs', 'start_idxs', 'end_idxs', 'scaffold_lengths'])
         save_df.to_csv(out_fpath+'motif_df.csv', index=True)
@@ -360,6 +367,43 @@ def get_intervals(list, single_res_domain=False):
                 start.append(list[i+1].item())
     return start, stop
 
+def generate_tcr_motif(model, alpha_chain, beta_chain, cdr3_len, tokenizer,
+                      batch_size=1, device='gpu', random_baseline=False, single_res_domain=False, chain='A'):
+    mask = tokenizer.mask_id
+
+    scaffold_alpha_tokenized = tokenizer.tokenize((alpha_chain,))
+    scaffold_beta_tokenized = tokenizer.tokenize((beta_chain,))
+
+    # Create input motif + scaffold
+    seq_len = len(alpha_chain) + len(cdr3) + len(beta_chain)
+    sample = torch.zeros((batch_size, seq_len)) + mask # start from all mask
+    sample[:, len(alpha_chain)] = torch.tensor(scaffold_alpha_tokenized)
+    sample[:, (len(alpha_chain) + cdr3_len):] = torch.tensor(scaffold_beta_tokenized)
+
+    nonmask_locations = (sample[0] != mask).nonzero().flatten()
+    new_start_idxs, new_end_idxs = get_intervals(nonmask_locations, single_res_domain=single_res_domain)
+
+    value, loc = (sample == mask).long().nonzero(as_tuple=True) # locations that need to be unmasked
+    loc = np.array(loc)
+    np.random.shuffle(loc)
+    sample = sample.long().to(device)
+    with torch.no_grad():
+        for i in loc:
+            timestep = torch.tensor([0] * batch_size)  # placeholder but not called in model
+            timestep = timestep.to(device)
+            if random_baseline:
+                p_sample = torch.multinomial(torch.tensor(train_prob_dist), num_samples=1)
+            else:
+                prediction = model(sample, timestep)
+                p = prediction[:, i, :len(tokenizer.all_aas) - 6]  # only canonical
+                p = torch.nn.functional.softmax(p, dim=1)  # softmax over categorical probs
+                p_sample = torch.multinomial(p, num_samples=1)
+            sample[:, i] = p_sample.squeeze()
+
+    print("Generated sequence:", [tokenizer.untokenize(s) for s in sample])
+    untokenized = [tokenizer.untokenize(s) for s in sample]
+
+    return untokenized
 
 def generate_scaffold(model, PDB_ID, motif_start_idxs, motif_end_idxs, scaffold_length, data_top_dir, tokenizer,
                       batch_size=1, device='gpu', random_baseline=False, single_res_domain=False, chain='A'):
