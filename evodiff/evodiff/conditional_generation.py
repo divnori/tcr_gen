@@ -27,6 +27,25 @@ def main():
     parser.add_argument('--gpus', type=int, default=0)
     parser.add_argument('--cond-task', type=str, default='scaffold',
                         help="Choice of 'scaffold' or 'idr' or 'tcr'")
+
+    
+    # added arguments
+    parser.add_argument('--scaffold_chain1', type=str, default='',
+                        help='Scaffold chain1 in TCR')
+    parser.add_argument('--scaffold_chain2', type=str, default='',
+                        help='Scaffold chain2 in TCR')
+    parser.add_argument('--scaffold_chain3', type=str, default='',
+                        help='Scaffold chain3 in TCR')
+    parser.add_argument('--scaffold_chain4', type=str, default='',
+                        help='Scaffold chain4 in TCR')
+    parser.add_argument('--cdr1_len', type=int, default=8,
+                        help='Length of desired CDR1 generation')
+    parser.add_argument('--cdr2_len', type=int, default=8,
+                        help='Length of desired CDR2 generation')
+    parser.add_argument('--cdr3_len', type=int, default=8,
+                        help='Length of desired CDR3 generation')
+
+
     parser.add_argument('--pdb', type=str, default=None,
                         help="If using cond-task=scaffold, provide a PDB code and motif indexes")
     parser.add_argument('--start-idxs', type=int, action='append',
@@ -192,14 +211,14 @@ def main():
             scaffold_lengths.append(scaffold_length)
 
     elif args.cond_task == 'tcr':
-        for k in range(7,16): # typical length range of TCR CDR3
-            generated_seq = generate_tcr_motif(model, alpha_chain, beta_chain, 
-                                k, tokenizer, device=device,
-                                single_res_domain=args.single_res_domain,
-                                chain=args.chain)
+        generated_seq = generate_tcr_motif(model, args.scaffold_chain1, args.scaffold_chain2,
+                                            args.scaffold_chain3, args.scaffold_chain4, 
+                                            args.cdr1_len, args.cdr2_len, args.cdr3_len,
+                                            tokenizer, device=device,
+                                            single_res_domain=args.single_res_domain,
+                                            chain=args.chain)
 
-        save_df = pd.DataFrame(list(zip(strings, start_idxs, end_idxs, scaffold_lengths)), columns=['seqs', 'start_idxs', 'end_idxs', 'scaffold_lengths'])
-        save_df.to_csv(out_fpath+'motif_df.csv', index=True)
+        print(generated_seq)
 
     with open(out_fpath + 'generated_samples_string.csv', 'w') as f:
         for _s in strings:
