@@ -3,10 +3,6 @@ import pandas as pd
 import subprocess
 
 def process_csv(csv_file):
-    scaffold_regions = []
-    cdr1_lengths = []
-    cdr2_lengths = []
-    cdr3_lengths = []
     
     with open(csv_file, 'r') as file:
         reader = csv.reader(file)
@@ -15,8 +11,8 @@ def process_csv(csv_file):
         for row in reader:
             sequence = ''.join(row)
             scaffold_left = sequence.replace(".", "")
+            # add right scaffolds based on const region
             
-    
     return left_scaffolds, right_scaffolds
 
 if __name__ == "__main__":
