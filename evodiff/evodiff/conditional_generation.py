@@ -202,16 +202,15 @@ def main():
             scaffold_lengths.append(scaffold_length)
 
     elif args.cond_task == 'tcr':
-        generated_seq = generate_tcr_motif(model, args.scaffold_chain1, args.scaffold_chain2,
-                                            args.scaffold_chain3, args.scaffold_chain4, 
-                                            args.cdr1_len, args.cdr2_len, args.cdr3_len,
+        generated_seq = generate_tcr_motif(model, args.scaffold_chain_left, 
+                                            args.scaffold_chain_right, args.cdr3_len,
                                             tokenizer, device=device,
                                             single_res_domain=args.single_res_domain,
                                             chain=args.chain)
         
-        with open("results_TRAV_human_imgt.csv", mode='a', newline='') as file:
+        with open("results/trbv_gen.csv", mode='a', newline='') as file:
             writer = csv.writer(file,lineterminator='\n')
-            writer.writerow([generated_seq[0], args.cdr1_len, args.cdr2_len, args.cdr3_len])
+            writer.writerow([generated_seq[0], args.cdr3_len])
 
     # with open(out_fpath + 'generated_samples_string.csv', 'w') as f:
     #     for _s in strings:
@@ -383,8 +382,8 @@ def generate_tcr_motif(model, scaffold_chain_left, scaffold_chain_right, cdr3_le
                       batch_size=1, device='gpu', random_baseline=False, single_res_domain=False, chain='A'):
 
     mask = tokenizer.mask_id
-    tokenized_left_scaffold.append(tokenizer.tokenize((scaffold_chain_left,)))
-    tokenized_right_scaffold.append(tokenizer.tokenize((scaffold_chain_right,)))
+    tokenized_left_scaffold = tokenizer.tokenize((scaffold_chain_left,))
+    tokenized_right_scaffold = tokenizer.tokenize((scaffold_chain_right,))
 
     sample = torch.cat([torch.tensor(tokenized_left_scaffold).unsqueeze(0),
                         torch.zeros((batch_size, cdr3_len)) + mask,
