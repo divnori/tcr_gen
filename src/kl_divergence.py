@@ -34,8 +34,7 @@ def kl(ref_seqs, gen_seqs, kl_loss):
     kl = kl_loss(torch.tensor(a[0:21]).log(), torch.tensor(b[0:21])).item()
     return kl
 
-def calc_unconditiona_kl(gen_file):
-
+def get_gen_seqs(gen_file):
     with open('data/trbc2_seq.txt', 'r') as file:
         const_region = file.read().strip()
 
@@ -45,8 +44,18 @@ def calc_unconditiona_kl(gen_file):
     const_idxs = [x.find(const_region) for x in full_seqs]
     gen_seqs = [full_seqs[i][const_idxs[i] - (cdr_lens[i]+4):const_idxs[i]] for i in range(len(full_seqs))]
 
-    true_df = pd.read_csv('data/TRB_CDR3_human_VDJdb.tsv', delimiter='\t', error_bad_lines=False)
+    return gen_seqs
+
+def get_true_seqs(true_file='data/TRB_CDR3_human_VDJdb.tsv'):
+    true_df = pd.read_csv(true_file, delimiter='\t', error_bad_lines=False)
     true_seqs = true_df['CDR3'].tolist()
+
+    return true_seqs
+
+def calc_unconditiona_kl(gen_file):
+
+    gen_seqs = get_gen_seqs(gen_file)
+    true_seqs = get_true_seqs()
 
     print(f"Number of Sequences in Reference Distribution: {len(true_seqs)}")
     print(f"Number of Sequences in Generated Distribution: {len(gen_seqs)}")
@@ -55,23 +64,28 @@ def calc_unconditiona_kl(gen_file):
     kl_value = kl(true_seqs, gen_seqs, kl_loss)
     print(f"KL Divergence = {kl_value}")
 
-def calc_diversity(gen_file):
-    with open('data/trbc2_seq.txt', 'r') as file:
-        const_region = file.read().strip()
-
-    df = pd.read_csv(gen_file, header=None)
-    full_seqs = df[0].tolist()
-    cdr_lens = df[1].astype(int).tolist()
-    const_idxs = [x.find(const_region) for x in full_seqs]
-    gen_seqs = [full_seqs[i][const_idxs[i] - (cdr_lens[i]+4):const_idxs[i]] for i in range(len(full_seqs))]
-
-    def hamming_dist(s1, s2):
+def hamming_dist(s1, s2):
         assert len(s1) == len(s2)
         hd = 0
         for b1, b2 in zip(s1, s2):
             if b1 != b2:
                 hd += 1
         return hd
+
+def calc_novelty(gen_file):
+
+    total_novelty = 0
+    
+    gen_seqs = get_gen_seqs(gen_file)
+    true_seqs = get_true_seqs()
+
+    for gen_seq in gen_seqs:
+        for true_seq in true_seqs:
+            pass
+    
+def calc_diversity(gen_file):
+
+    gen_seqs = get_gen_seqs(gen_file)
 
     total_hd = 0
     num_pairs = 0
