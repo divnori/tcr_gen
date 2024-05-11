@@ -64,14 +64,6 @@ def calc_unconditiona_kl(gen_file):
     kl_value = kl(true_seqs, gen_seqs, kl_loss)
     print(f"KL Divergence = {kl_value}")
 
-def hamming_dist(s1, s2):
-        assert len(s1) == len(s2)
-        hd = 0
-        for b1, b2 in zip(s1, s2):
-            if b1 != b2:
-                hd += 1
-        return hd
-
 def calc_novelty(gen_file):
 
     total_novelty = 0
@@ -86,6 +78,14 @@ def calc_novelty(gen_file):
 def calc_diversity(gen_file):
 
     gen_seqs = get_gen_seqs(gen_file)
+
+    def hamming_dist(s1, s2):
+        assert len(s1) == len(s2)
+        hd = 0
+        for b1, b2 in zip(s1, s2):
+            if b1 != b2:
+                hd += 1
+        return hd
 
     total_hd = 0
     num_pairs = 0
