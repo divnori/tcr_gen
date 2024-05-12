@@ -3,6 +3,9 @@ import pandas as pd
 import torch
 import torch.nn as nn
 import subprocess
+from Bio import pairwise2
+from Bio.SubsMat import MatrixInfo as matlist
+import itertools
 
 def seqs_to_dict(seqs):
     seqs = ''.join(seqs)
@@ -91,27 +94,17 @@ def calc_novelty(gen_seqs):
             pass
     
 def calc_diversity(gen_seqs):
-
-    def hamming_dist(s1, s2):
-        assert len(s1) == len(s2)
-        hd = 0
-        for b1, b2 in zip(s1, s2):
-            if b1 != b2:
-                hd += 1
-        return hd
-
-    total_hd = 0
+    # is average fine or distribution better?
+    matrix = matlist.blosum62
+    total_score = 0
     num_pairs = 0
-    
-    for i in range(len(gen_seqs)):
-        seq1 = gen_seqs[i]
-        for j in range(i+1, len(gen_seqs)):
-            seq2 = gen_seqs[j]
-            total_hd += hamming_dist(seq1, seq2)
+
+    for s1, s2 in itertools.combinations(gen_seqs, 2):
+        for a in pairwise2.align.globaldx(s1, s2, matrix):
+            total_score += a.score
             num_pairs += 1
 
-    return total_hd/num_pairs
-        
+    return total_score/num_pairs
 
 if __name__ == "__main__":
 
