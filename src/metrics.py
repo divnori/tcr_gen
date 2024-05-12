@@ -98,6 +98,9 @@ def calc_diversity(gen_file):
             num_pairs += 1
 
     return total_hd/num_pairs
+
+
+def calc
         
 
 if __name__ == "__main__":
