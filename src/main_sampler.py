@@ -71,7 +71,7 @@ if __name__ == "__main__":
     VJ_gen = sample_VJ(num_samples, V_scaffolds, J_scaffolds, VJ_table)
     CDR3_gen = sample_CDR3(num_samples, CDR3_table)
 
-    for i in range(num_samples):
+    for i in tqdm(range(num_samples)):
         V_scaffold, J_scaffold = next(VJ_gen)
         CDR3_len = next(CDR3_gen)
         left_scaffold = V_scaffold

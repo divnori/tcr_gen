@@ -1,7 +1,7 @@
 import torch
 import evodiff
 import numpy as np
-from sequence_models.constants import MASK, MSA_PAD, MSA_ALPHABET, MSA_AAS, GAP, START, STOP, SEP
+from sequence_models.constants import MASK, MSA_PAD, MSA_ALPHABET, MSA_AAS, GAP, START, STOP
 from evodiff.constants import BLOSUM_ALPHABET
 from sklearn.preprocessing import normalize
 import itertools
@@ -11,6 +11,8 @@ import pandas as pd
 import subprocess
 import os
 import urllib
+
+SEP = '/'
 
 def loadMatrix(path):
     """

@@ -210,7 +210,7 @@ def main():
         
         with open("results/trbv_gen.csv", mode='a', newline='') as file:
             writer = csv.writer(file,lineterminator='\n')
-            writer.writerow([generated_seq[0], args.cdr3_len])
+            writer.writerow([generated_seq[0], args.scaffold_chain_left, args.scaffold_chain_right, args.cdr3_len])
 
     # with open(out_fpath + 'generated_samples_string.csv', 'w') as f:
     #     for _s in strings:
