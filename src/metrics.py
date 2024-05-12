@@ -2,6 +2,7 @@ from collections import Counter, OrderedDict
 import pandas as pd
 import torch
 import torch.nn as nn
+import subprocess
 
 def seqs_to_dict(seqs):
     seqs = ''.join(seqs)
@@ -43,7 +44,8 @@ def get_gen_seqs(gen_file):
     cdr_lens = df[1].astype(int).tolist()
     const_idxs = [x.find(const_region) for x in full_seqs]
     gen_seqs = [full_seqs[i][const_idxs[i] - (cdr_lens[i]+4):const_idxs[i]] for i in range(len(full_seqs))]
-
+    df[len(df.columns)] = gen_seqs
+    df.to_csv(gen_file, header=None)
     return gen_seqs
 
 def get_true_seqs(true_file='data/TRB_CDR3_human_VDJdb.tsv'):
@@ -52,9 +54,8 @@ def get_true_seqs(true_file='data/TRB_CDR3_human_VDJdb.tsv'):
 
     return true_seqs
 
-def calc_unconditiona_kl(gen_file):
+def calc_unconditiona_kl(gen_seqs):
 
-    gen_seqs = get_gen_seqs(gen_file)
     true_seqs = get_true_seqs()
 
     print(f"Number of Sequences in Reference Distribution: {len(true_seqs)}")
@@ -64,20 +65,32 @@ def calc_unconditiona_kl(gen_file):
     kl_value = kl(true_seqs, gen_seqs, kl_loss)
     print(f"KL Divergence = {kl_value}")
 
-def calc_novelty(gen_file):
+def calc_olga(gen_file):
+    chain = 'humanTRB' if 'trb' in gen_file else 'humanTRA'
+    
+    command = [
+        "python",
+        "OLGA/olga/compute_pgen.py",
+        "-i",
+        gen_file,
+        "--seq_in 2",
+        f"--{chain}",
+        "-o",
+        f"results/{gen_file[:-4]}_pgens.tsv"
+    ]
+    subprocess.run(command)
+
+def calc_novelty(gen_seqs):
 
     total_novelty = 0
     
-    gen_seqs = get_gen_seqs(gen_file)
     true_seqs = get_true_seqs()
 
     for gen_seq in gen_seqs:
         for true_seq in true_seqs:
             pass
     
-def calc_diversity(gen_file):
-
-    gen_seqs = get_gen_seqs(gen_file)
+def calc_diversity(gen_seqs):
 
     def hamming_dist(s1, s2):
         assert len(s1) == len(s2)
@@ -98,14 +111,11 @@ def calc_diversity(gen_file):
             num_pairs += 1
 
     return total_hd/num_pairs
-
-
-def calc
         
 
 if __name__ == "__main__":
 
-    calc_unconditiona_kl('results/trbv_gen.csv')
-
-    
-
+    gen_file = 'results/trbv_gen.csv'
+    gen_seqs = get_gen_seqs(gen_file)
+    calc_unconditiona_kl(gen_seqs)
+    calc_olga(gen_file)
