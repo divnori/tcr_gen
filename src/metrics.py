@@ -93,7 +93,7 @@ def calc_novelty(gen_seqs):
         for true_seq in true_seqs:
             pass
     
-def calc_diversity(gen_seqs):
+def calc_seq_diversity(gen_seqs):
     # is average fine or distribution better?
     matrix = matlist.blosum62
     total_score = 0
@@ -104,7 +104,7 @@ def calc_diversity(gen_seqs):
             total_score += a.score
             num_pairs += 1
 
-    return total_score/num_pairs
+    print(f"Diversity = {total_score/num_pairs}")
 
 if __name__ == "__main__":
 
@@ -112,3 +112,5 @@ if __name__ == "__main__":
     gen_seqs = get_gen_seqs(gen_file)
     calc_unconditiona_kl(gen_seqs)
     calc_olga(gen_file)
+    calc_seq_diversity(gen_seqs)
+    
