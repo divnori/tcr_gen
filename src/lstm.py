@@ -27,7 +27,7 @@ class LSTM(pl.LightningModule):
         self.prot_letter_to_num = {'C': 0, 'D': 1, 'S': 2, 'Q': 3, 'K': 4, 'I': 5,
                        'P': 6, 'T': 7, 'F': 8, 'A': 9, 'G': 10, 'H': 11,
                        'E': 12, 'L': 13, 'R': 14, 'W': 15, 'V': 16, 
-                       'N': 17, 'Y': 18, 'M': 18} 
+                       'N': 17, 'Y': 18, 'M': 19} 
         self.prot_num_to_letter = {v:k for k, v in self.prot_letter_to_num.items()}
 
         self.loss_fn = torch.nn.CrossEntropyLoss()
@@ -148,6 +148,6 @@ if __name__ == "__main__":
     gen_lens = pd.read_csv("results/trbv_gen.csv")["generated_len"].tolist()
     test_dataloader = DataLoader(list(zip(contexts, gen_lens)), batch_size=1)
 
-    model = LSTM.load_from_checkpoint("/home/dnori/tcr_gen/lstm_ckpts/lstm-epoch=02-train_loss=1.00.ckpt", hidden_dim1=32, hidden_dim2=16, output_dim=20, vocab_size=20, embedding_dim=128)
+    model = LSTM.load_from_checkpoint("lstm_ckpts/lstm-epoch=02-train_loss=0.96.ckpt", hidden_dim1=32, hidden_dim2=16, output_dim=20, vocab_size=20, embedding_dim=128)
     trainer = pl.Trainer(devices=1)
     trainer.predict(model, dataloaders=test_dataloader)
