@@ -11,7 +11,7 @@ def make_global_plddt_histogram(results_csv_path):
     plt.xlabel('pLDDT')
     plt.ylabel('Frequency')
     plt.title('pLDDT Histogram')
-    plt.savefig('results/plddt_histogram.png')
+    plt.savefig('results/plddt_histogram.png', dpi=200)
 
 def make_per_protein_plddt_plot(structures_path, prot_idx):
     pdb_path = os.path.join(structures_path, f'prot{prot_idx}.pdb')
@@ -31,12 +31,11 @@ def make_per_protein_plddt_plot(structures_path, prot_idx):
     plt.ylabel('pLDDT')
     plt.title('pLDDT by Sequence Position')
     plt.legend()
-    plt.savefig('results/plddt_by_position.png')
-    plt.show()
+    plt.savefig('results/plddt_by_position.png', dpi=200)
 
 
 if __name__ == "__main__":
 
-    # make_plddt_histogram('results/plddt_results.csv')
+    # make_global_plddt_histogram('results/plddt_results.csv')
 
-    make_per_protein_plddt_plot('results/structures', 999)
+    make_per_protein_plddt_plot('results/structures', 0)

@@ -208,7 +208,7 @@ def main():
                                             single_res_domain=args.single_res_domain,
                                             chain=args.chain)
         
-        with open("results/trbv_gen.csv", mode='a', newline='') as file:
+        with open("results/trbv_gen_v2.csv", mode='a', newline='') as file:
             writer = csv.writer(file,lineterminator='\n')
             writer.writerow([generated_seq[0], args.scaffold_chain_left, args.scaffold_chain_right, args.cdr3_len])
 

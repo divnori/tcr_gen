@@ -2,6 +2,8 @@ import biotite.structure.io as bsio
 import csv
 import esm
 import os
+import pandas as pd
+import random
 import torch
 from tqdm import tqdm
 
@@ -19,6 +21,11 @@ results_csv_path = 'results/plddt_results.csv'
 with open(csv_file, 'r') as file:
     reader = csv.reader(file)
     sequences = [row[0] for row in reader]
+
+# positive control
+# with open('data/native_TCRb_seqs.txt', 'r') as file:
+#     lines = file.readlines()
+# sequences = [line.strip() for line in lines]
 
 with open(results_csv_path, 'w', newline='') as csvfile:
     writer = csv.writer(csvfile)
