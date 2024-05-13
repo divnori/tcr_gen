@@ -39,4 +39,4 @@ if __name__ == "__main__":
 
     # make_plddt_histogram('results/plddt_results.csv')
 
-    make_per_protein_plddt_plot('results/structures', 100)
+    make_per_protein_plddt_plot('results/structures', 999)
