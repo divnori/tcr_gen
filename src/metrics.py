@@ -100,8 +100,9 @@ def calc_seq_diversity(gen_seqs):
     num_pairs = 0
 
     for s1, s2 in itertools.combinations(gen_seqs, 2):
+        length = max(len(s1), len(s2))
         for a in pairwise2.align.globaldx(s1, s2, matrix):
-            total_score += a.score
+            total_score += a.score/length
             num_pairs += 1
 
     print(f"Diversity = {total_score/num_pairs}")
@@ -110,7 +111,7 @@ if __name__ == "__main__":
 
     gen_file = 'results/trbv_gen.csv'
     gen_seqs = get_gen_seqs(gen_file)
-    calc_unconditiona_kl(gen_seqs)
+    #calc_unconditiona_kl(gen_seqs)
     calc_olga(gen_file)
     calc_seq_diversity(gen_seqs)
     
