@@ -39,6 +39,8 @@ def load_sequence_VJ_table(csv_file):
             VJ_ids.append(f'{VJ_mat.index[r]};{VJ_mat.columns[c]}')
     return pd.Series(VJ_freqs, index=VJ_ids)
 
+def load_CDR3_table(csv_file):
+    return pd.read_csv(csv_file, index_col='Length')
 
 def sample_VJ(k, V_scaffolds, J_scaffolds, VJ_table):
     """
@@ -64,8 +66,8 @@ if __name__ == "__main__":
         C_scaffold = file.read().strip()
 
     VJ_table = load_sequence_VJ_table('data/normalized_V_J_freqs.csv')
-    CDR3_table = gen_uniform_CDR3_table(np.arange(8, 22))
-    
+    CDR3_table = load_CDR3_table('data/CDR_length_freqs.csv')
+
     num_samples = 1000
     model_type = "oa_dm_38M"
     VJ_gen = sample_VJ(num_samples, V_scaffolds, J_scaffolds, VJ_table)
