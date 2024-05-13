@@ -36,6 +36,6 @@ def make_per_protein_plddt_plot(structures_path, prot_idx):
 
 if __name__ == "__main__":
 
-    # make_global_plddt_histogram('results/plddt_results.csv')
+    make_global_plddt_histogram('results/plddt_results.csv')
 
-    make_per_protein_plddt_plot('results/structures', 0)
+    # make_per_protein_plddt_plot('results/structures', 0)

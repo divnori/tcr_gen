@@ -1,11 +1,13 @@
 from collections import Counter, OrderedDict
 import pandas as pd
+import random
 import torch
 import torch.nn as nn
 import subprocess
 from Bio import pairwise2
-from Bio.SubsMat import MatrixInfo as matlist
+from Bio.Align import substitution_matrices
 import itertools
+from tqdm import tqdm
 
 def seqs_to_dict(seqs):
     seqs = ''.join(seqs)
@@ -68,49 +70,65 @@ def calc_unconditiona_kl(gen_seqs):
     kl_value = kl(true_seqs, gen_seqs, kl_loss)
     print(f"KL Divergence = {kl_value}")
 
-def calc_olga(gen_file):
+def calc_olga(gen_file, lstm=False, evodiff=False, native=True):
     chain = 'humanTRB' if 'trb' in gen_file else 'humanTRA'
-    
-    command = [
-        "python",
-        "OLGA/olga/compute_pgen.py",
-        "-i",
-        gen_file,
-        "--seq_in 2",
-        f"--{chain}",
-        "-o",
-        f"results/{gen_file[:-4]}_pgens.tsv"
-    ]
-    subprocess.run(command)
 
-def calc_novelty(gen_seqs):
-
-    total_novelty = 0
+    if lstm:
+        df = pd.read_csv(gen_file, header=None)
+        seqs = df[0].tolist()
+    elif evodiff:
+        df = pd.read_csv(gen_file)
+        seqs = df["sequence"].tolist()
+        left_context = df["left_context"].tolist()
+        gen_lens = df["generated_len"].tolist()
+        seqs = [s[len(lc):len(lc)+gl] for s, lc, gl in zip(seqs, left_context, gen_lens)]
+    elif native:
+        df = pd.read_csv(gen_file)
+        seqs = df["CDR3"].tolist()
     
-    true_seqs = get_true_seqs()
+    probs = 0
+    for seq in tqdm(seqs):
+        command = [
+            f"olga-compute_pgen --humanTRB {seq}"
+        ]
+        result = subprocess.run(command, cwd="OLGA/olga", shell=True, capture_output=True, text=True)
 
-    for gen_seq in gen_seqs:
-        for true_seq in true_seqs:
-            pass
-    
+        prob = float(result.stdout.split(" ")[7].split('\n')[0])
+        probs += prob
+
+    print(f"Average Probability: {probs/len(seqs)}")
+
+
 def calc_seq_diversity(gen_seqs):
     # is average fine or distribution better?
-    matrix = matlist.blosum62
+    matrix = substitution_matrices.load("BLOSUM62")
     total_score = 0
     num_pairs = 0
 
-    for s1, s2 in itertools.combinations(gen_seqs, 2):
+    for s1, s2 in tqdm(itertools.combinations(gen_seqs, 2)):
         for a in pairwise2.align.globaldx(s1, s2, matrix):
             total_score += a.score
             num_pairs += 1
 
-    print(f"Diversity = {1 - total_score/num_pairs}")
+    print(f"Pairwise Similarity = {total_score/num_pairs}")
 
 if __name__ == "__main__":
 
     gen_file = 'results/trbv_gen.csv'
-    gen_seqs = get_gen_seqs(gen_file)
-    # calc_unconditiona_kl(gen_seqs)
-    calc_olga(gen_file)
+    
+    # # lstm
+    # df = pd.read_csv(gen_file, header=None)
+    # gen_seqs = df[0].tolist()
+    # gen_seqs = random.sample(gen_seqs, 100)
+
+    # evodiff
+    df = pd.read_csv(gen_file)
+    seqs = df["sequence"].tolist()
+    left_context = df["left_context"].tolist()
+    gen_lens = df["generated_len"].tolist()
+    gen_seqs = [s[len(lc):len(lc)+gl] for s, lc, gl in zip(seqs, left_context, gen_lens)]
+    gen_seqs = random.sample(gen_seqs, 100)
+
+    # calc_olga(gen_file)
     calc_seq_diversity(gen_seqs)
     
