@@ -66,6 +66,32 @@ class LSTM(pl.LightningModule):
         self.log("val_loss", loss, batch_size=1)
         return loss
 
+    def predict_step(self, batch):
+        v_region, gen_len = batch
+        v_region = v_region[0]
+        gen_len = gen_len[0]
+        context_len = len(v_region)
+
+        cdr3_logits = torch.zeros((gen_len,20)).to("cuda")
+        tokenized_seq_input = self.tokenize(v_region)
+        for i in range(gen_len):
+            input_embedding = self.embedding(tokenized_seq_input)
+            input_encoding, _ = self.encoder_lstm(input_embedding)
+            decoded_rep, _ = self.decoder_lstm(input_encoding)
+            pred_logit_lasttok = self.fc(decoded_rep)[-1]
+            cdr3_logits[i] = pred_logit_lasttok
+            tokenized_seq_input = torch.cat((tokenized_seq_input, torch.argmax(pred_logit_lasttok).unsqueeze(0)))
+
+        cdr3_probabilities = F.softmax(cdr3_logits, dim=-1)
+        sampled_cdr3 = torch.multinomial(cdr3_probabilities, 1, replacement=True)[:,0]
+        pred_cdr3_seq = "".join([self.prot_num_to_letter.get(x, "X") for x in sampled_cdr3.tolist()])
+
+        with open('results/lstm_gen.csv', 'a', newline='') as file:
+            writer = csv.writer(file)
+            writer.writerow([pred_cdr3_seq, v_region, gen_len.item()])
+
+        return pred_cdr3_seq
+
     def configure_optimizers(self):
         return Adam(self.parameters(), lr=0.001)
 
@@ -87,33 +113,41 @@ def load_data():
 
 if __name__ == "__main__":
 
-    data = load_data()
+    # data = load_data()
 
-    # random split 80-20
-    train_set = data[:int(len(data)*0.8)]
-    test_set = data[int(len(data)*0.8):]
+    # # random split 80-20
+    # train_set = data[:int(len(data)*0.8)]
+    # val_set = data[int(len(data)*0.8):]
 
-    train_dataloader = DataLoader(train_set, batch_size=1)
-    test_dataloader = DataLoader(test_set, batch_size=1)
+    # train_dataloader = DataLoader(train_set, batch_size=1)
+    # val_dataloader = DataLoader(val_set, batch_size=1)
 
-    model = LSTM(32, 16, 20, 20, 128)
+    # model = LSTM(32, 16, 20, 20, 128)
 
-    checkpoint_callback = ModelCheckpoint(dirpath="lstm_ckpts", 
-                                            save_top_k=-1, 
-                                            monitor="train_loss",
-                                            every_n_train_steps=500,
-                                            filename="lstm-{epoch:02d}-{train_loss:.2f}")
-    trainer = pl.Trainer(
-        num_sanity_val_steps=1,
-        devices=[5],
-        enable_checkpointing=True,
-        callbacks=[checkpoint_callback],
-        max_epochs=500,
-        precision="bf16-mixed",
-        accumulate_grad_batches=4,
-    )
-    trainer.fit(
-        model,
-        train_dataloaders=train_dataloader,
-        val_dataloaders=test_dataloader,
-    )
+    # checkpoint_callback = ModelCheckpoint(dirpath="lstm_ckpts", 
+    #                                         save_top_k=-1, 
+    #                                         monitor="train_loss",
+    #                                         every_n_train_steps=500,
+    #                                         filename="lstm-{epoch:02d}-{train_loss:.2f}")
+    # trainer = pl.Trainer(
+    #     num_sanity_val_steps=1,
+    #     devices=[5],
+    #     enable_checkpointing=True,
+    #     callbacks=[checkpoint_callback],
+    #     max_epochs=500,
+    #     precision="bf16-mixed",
+    #     accumulate_grad_batches=4,
+    # )
+    # trainer.fit(
+    #     model,
+    #     train_dataloaders=train_dataloader,
+    #     val_dataloaders=val_dataloader,
+    # )
+
+    contexts = pd.read_csv("results/trbv_gen.csv")["left_context"].tolist()
+    gen_lens = pd.read_csv("results/trbv_gen.csv")["generated_len"].tolist()
+    test_dataloader = DataLoader(list(zip(contexts, gen_lens)), batch_size=1)
+
+    model = LSTM.load_from_checkpoint("/home/dnori/tcr_gen/lstm_ckpts/lstm-epoch=02-train_loss=1.00.ckpt", hidden_dim1=32, hidden_dim2=16, output_dim=20, vocab_size=20, embedding_dim=128)
+    trainer = pl.Trainer(devices=1)
+    trainer.predict(model, dataloaders=test_dataloader)
