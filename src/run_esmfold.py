@@ -11,16 +11,23 @@ model = esm.pretrained.esmfold_v1()
 model = model.eval().cuda()
 
 # Path to the input CSV file
-csv_file = 'results/trbv_gen.csv'
+csv_file = 'results/lstm_gen.csv'
 
 # Path to the results folder
-results_folder = 'results/structures'
+results_folder = 'results/lstm_structures'
 
-results_csv_path = 'results/plddt_results.csv'
+results_csv_path = 'results/lstm_plddt_results.csv'
 
+# evodiff
+# with open(csv_file, 'r') as file:
+#     reader = csv.reader(file)
+#     sequences = [row[0] for row in reader]
+
+# lstm
+const = "EDLKNVFPPEVAVFEPSEAEISHTQKATLVCLATGFYPDHVELSWWVNGKEVHSGVSTDPQPLKEQPALNDSRYCLSSRLRVSATFWQNPRNHFRCQVQFYGLSENDEWTQDRAKPVTQIVSAEAWGRADCGFTSESYQQGVLSATILYEILLGKATLYAVLVSALVLMAMVKRKDSRG"
 with open(csv_file, 'r') as file:
     reader = csv.reader(file)
-    sequences = [row[0] for row in reader]
+    sequences = [row[1]+row[0]+"GPGTRLTVT"+const for row in reader]
 
 # positive control
 # with open('data/native_TCRb_seqs.txt', 'r') as file:

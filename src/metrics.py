@@ -100,35 +100,35 @@ def calc_olga(gen_file, lstm=False, evodiff=False, native=True):
 
 
 def calc_seq_diversity(gen_seqs):
-    # is average fine or distribution better?
     matrix = substitution_matrices.load("BLOSUM62")
-    total_score = 0
-    num_pairs = 0
+    total_scores = []
 
     for s1, s2 in tqdm(itertools.combinations(gen_seqs, 2)):
-        length = max(len(s1), len(s2))
+        total_score = 0
+        length = 0
         for a in pairwise2.align.globaldx(s1, s2, matrix):
-            total_score += a.score/length
-            num_pairs += 1
+            total_score += a.score
+            length += 1
+        total_scores.append(total_score/length)
 
-    print(f"Pairwise Similarity = {total_score/num_pairs}")
+    print(f"Pairwise Similarity = {sum(total_scores)/len(total_scores)}")
 
 if __name__ == "__main__":
 
-    gen_file = 'results/trbv_gen.csv'
+    gen_file = 'results/lstm_gen.csv'
     
     # # lstm
-    # df = pd.read_csv(gen_file, header=None)
-    # gen_seqs = df[0].tolist()
-    # gen_seqs = random.sample(gen_seqs, 100)
+    df = pd.read_csv(gen_file, header=None)
+    gen_seqs = df[0].tolist()
+    gen_seqs = random.sample(gen_seqs, 100)
 
     # evodiff
-    df = pd.read_csv(gen_file)
-    seqs = df["sequence"].tolist()
-    left_context = df["left_context"].tolist()
-    gen_lens = df["generated_len"].tolist()
-    gen_seqs = [s[len(lc):len(lc)+gl] for s, lc, gl in zip(seqs, left_context, gen_lens)]
-    gen_seqs = random.sample(gen_seqs, 100)
+    # df = pd.read_csv(gen_file)
+    # seqs = df["sequence"].tolist()
+    # left_context = df["left_context"].tolist()
+    # gen_lens = df["generated_len"].tolist()
+    # gen_seqs = [s[len(lc):len(lc)+gl] for s, lc, gl in zip(seqs, left_context, gen_lens)]
+    # gen_seqs = random.sample(gen_seqs, 100)
 
     # calc_olga(gen_file)
     calc_seq_diversity(gen_seqs)
